@@ -8,25 +8,19 @@
 ;; TODO if subtractive geom world is too hard, just make a "platform" out of immovable cubes
 ;; TODO move cube with click and drag
 
-;; * graphics
-
 ;; * state
 
-(def state (atom [{:transform "matrix goes here"}
-                  {:tags #{:world}}]))
+(def state (atom [{:transform "matrix goes here"
+                   :mesh      "mesh info goes here"}
+                  {:subtractive true
+                   :mesh        "mesh info goes here"}]))
 
 ;; * entry point
 
-(def *cube (atom nil))
-(def *renderer (atom nil))
-(def *camera (atom nil))
-(def *scene (atom nil))
-
-(def start (.now js/Date))
-
-(defn init
+(defn init!
   []
-  (let [
+  (let [start (.now js/Date)
+
         ;; add a container <div> tag to the page
         container-id "demo"
         _            (when-let [old (.getElementById js/document container-id)]
@@ -35,44 +29,27 @@
         _            (.setAttribute container "id" container-id)
         _            (.appendChild (.-body js/document) container)
 
-        ;; add camera and scene
-        camera       (js/THREE.PerspectiveCamera. 70 (/ (.-innerWidth js/window) (.-innerHeight js/window)) 1 2000)
-        _            (reset! *camera camera)
-        _            (set! (.-z (.-position camera)) 600)
-        scene        (js/THREE.Scene.)
-        _            (.set (.-position scene) 100 0 0)
-        _            (reset! *scene scene)
+        ;; add camera
+        camera (js/THREE.PerspectiveCamera. 70 (/ (.-innerWidth js/window) (.-innerHeight js/window)) 1 2000)
+        _      (set! (.-z (.-position camera)) 600)
 
-        ;; ;; add a cube with flat, random colours
-        ;; box          (.toNonIndexed (js/THREE.BoxBufferGeometry. 200 200 200))
-        ;; ;; FIXME - the below code doesn't work; not sure why...
-        ;; colour  (js/THREE.Color.)
-        ;; colours (->> (repeatedly (fn []
-        ;;                            (.setHex colour (* (js/Math.random) 0xffffff))
-        ;;                            [(.-r colour) (.-g colour) (.-b colour)]))
-        ;;              (take (.-count (.-position (.-attributes box))))
-        ;;              (apply concat)
-        ;;              vec)
-        ;; _       (.addAttribute box "color" (js/THREE.Float32BufferAttribute. (clj->js colours) 3))
-        ;; cube (js/THREE.Mesh. box (js/THREE.MeshBasicMaterial. (clj->js {:color 0x00ff00 :vertexColors js/THREE.VertexColors})))
-        ;; _    (.add scene cube)
-        ;; _ (reset! *cube cube)
+        ;; add scene
+        scene (js/THREE.Scene.)
+        _     (.set (.-position scene) 100 0 0)
 
+        ;; make a cube with flat colours
         cube-material (js/THREE.MeshBasicMaterial. (clj->js {:color 0xffffff :vertexColors js/THREE.FaceColors}))
         cube-geometry (js/THREE.CubeGeometry. 80 80 80 1 1 1)
-        _ (doseq [i    (range (.-length (.-faces cube-geometry)))
-                  :let [face (aget (.-faces cube-geometry) i)]]
-            (.setRGB (.-color face) (js/Math.random) (js/Math.random) (js/Math.random)))
-        cube (js/THREE.Mesh. cube-geometry cube-material)
-        ;; _ (.set (.-position cube) -100 50 0)
-        _ (reset! *cube cube)
-        _ (.add scene cube)
+        _             (doseq [i    (range (.-length (.-faces cube-geometry)))
+                              :let [face (aget (.-faces cube-geometry) i)]]
+                        (.setRGB (.-color face) (js/Math.random) (js/Math.random) (js/Math.random)))
+        cube          (js/THREE.Mesh. cube-geometry cube-material)
+        _             (.add scene cube)
 
         ;; add renderer
         renderer (js/THREE.SoftwareRenderer.)
         _        (.setSize renderer (.-innerWidth js/window) (.-innerHeight js/window))
-        _ (.appendChild container (.-domElement renderer))
-        _ (reset! *renderer renderer)
+        _        (.appendChild container (.-domElement renderer))
 
         _ (.addEventListener js/window
                              "resize"
@@ -81,23 +58,56 @@
                                              (/ (.-innerWidth js/window) (.-innerHeight js/window)))
                                      _ (.updateProjectionMatrix camera)
                                      _ (.setSize renderer (.-innerWidth js/window) (.-innerHeight js/window))]))
-                             false)]))
+                             false)
 
-(defn render
-  []
-  (let [timer    (- (.now js/Date) start)
-        cube     @*cube
-        _        (set! (.-x (.-rotation cube)) (* timer 0.0002))
-        _        (set! (.-z (.-rotation cube)) (* timer 0.0003))
-        renderer @*renderer
-        scene    @*scene
-        camera   @*camera
-        _        (.render renderer scene camera)]))
+        ;; allow clicking on parts of cube with mouse to change their colour
+        projector (js/THREE.Projector.)
+        target-list (clj->js [cube])
+        _ (.addEventListener js/window
+                             "mousedown"
+                             (fn [event]
+                               (let [x          (- (* (/ (.-clientX event)
+                                                         (.-innerWidth js/window))
+                                                      2)
+                                                   1)
+                                     y          (+ (- (* (/ (.-clientY event)
+                                                            (.-innerHeight js/window))
+                                                         2))
+                                                   1)
+                                     vector     (js/THREE.Vector3. x y 1)
+                                     _          (js/console.log (clj->js {:x (.-x vector)
+                                                                          :y (.-y vector)
+                                                                          :z (.-z vector)}))
+                                     _          (.unproject vector camera)
+                                     ray        (js/THREE.Raycaster. (.-position camera)
+                                                                     (.normalize (.sub vector (.-position camera))))
+                                     intersects (.intersectObjects ray target-list)
+                                     _          (js/console.log "intersects" intersects)
+                                     _          (when (> (.-length intersects) 0)
+                                                  (do (js/console.log "actually did intersect" intersects)
+                                                      (.setRGB (.-color (.-face (aget intersects 0)))
+                                                               (+ (* 0.8 (js/Math.random)) 0.2)
+                                                               0 0)))]))
+                             false)
 
-(defn animate
-  []
-  (let [_ (.requestAnimationFrame js/window animate)
-        _ (render)]))
+        _ (defn update!
+            [dt-ms]
+            (let [
+                  ;; _ (set! (.-x (.-rotation cube)) (* timer 0.0002))
+                  ;; _ (set! (.-z (.-rotation cube)) (* timer 0.0003))
+                  ]))
 
-(init)
-(animate)
+        _ (defn render!
+            []
+            (let [_ (.render renderer scene camera)]))
+
+        _ (defn animate!
+            []
+            (let [_     (.requestAnimationFrame js/window animate!)
+                  dt-ms (- (.now js/Date) start)
+                  _     (update! dt-ms)
+                  _     (render!)]))
+
+        _ (animate!)]))
+
+(init!)
