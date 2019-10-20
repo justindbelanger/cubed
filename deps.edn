@@ -1,7 +1,12 @@
-{:deps    {cljsjs/three              {:mvn/version "0.1.01-1"}
+{:deps    {cider/cider-nrepl         {:mvn/version "0.22.3"}
+           cider/piggieback          {:mvn/version "0.4.1"}
+           cljsjs/three              {:mvn/version "0.1.01-1"}
            cljsjs/three-examples     {:mvn/version "0.0.91-0"}
+           com.bhauman/figwheel-main {:mvn/version "0.2.3"}
            org.clojure/clojurescript {:mvn/version "1.10.439"}
            net.mikera/core.matrix    {:mvn/version "0.62.0"}}
  :paths   ["src" "resources"]
- :aliases {:dev {:extra-paths ["target"]
-                 :extra-deps  {com.bhauman/figwheel-main {:mvn/version "0.1.9"}}}}}
+ :aliases {:dev {:extra-paths ["dev" "target"]
+                 :main-opts   ["--main" "nrepl.cmdline"
+                               "--interactive"
+                               "--middleware" "[cider.nrepl/cider-middleware,cider.piggieback/wrap-cljs-repl]"]}}}
