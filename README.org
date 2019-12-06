@@ -1,0 +1,4 @@
+* Purpose
+1. Figure out how best to use ThreeJS from ClojureScript.
+2. Learn about ThreeJS and 3D graphics in Web browsers.
+3. Learn how to make a ClojureScript app using tools.deps and /without/ a backend Clojure server.
