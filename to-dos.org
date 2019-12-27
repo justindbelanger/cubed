@@ -1,0 +1,7 @@
+* TODO use threeagent
+* TODO [#A] show accurate line from user's perspective to a point in the world
+* TODO [#B] accurate coordinates for user clicking on an object in the world
+* TODO multiple cubes
+* TODO [#C] clicking and dragging to move cubes
+* TODO rotating cubes
+* TODO proper ECS architecture
