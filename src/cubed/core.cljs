@@ -92,14 +92,14 @@
         _ (.addEventListener js/window
                              "mousedown"
                              (fn [event]
-                               (let [x          (- (* (/ (.-clientX event)
-                                                         (.-innerWidth js/window))
-                                                      2)
-                                                   1)
-                                     y          (+ (- (* (/ (.-clientY event)
-                                                            (.-innerHeight js/window))
-                                                         2))
-                                                   1)
+                               (let [transform-origin-to-center (fn [num denom]
+                                                                  (- (* (/ num denom)
+                                                                        2)
+                                                                     1))
+                                     x (transform-origin-to-center (.-clientX event)
+                                                                   (.-innerWidth js/window))
+                                     y (- (transform-origin-to-center (.-clientY event)
+                                                                      (.-innerHeight js/window)))
                                      screen-v      (js/THREE.Vector2. x y)
                                      ray (js/THREE.Raycaster.)
                                      _ (.setFromCamera ray screen-v camera)
