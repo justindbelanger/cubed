@@ -101,7 +101,6 @@
                                                          2))
                                                    1)
                                      screen-v      (js/THREE.Vector2. x y)
-                                     camera-position (.-position camera)
                                      ray (js/THREE.Raycaster.)
                                      _ (.setFromCamera ray screen-v camera)
                                      intersects (.intersectObjects ray target-list)
