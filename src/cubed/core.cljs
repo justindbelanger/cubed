@@ -37,6 +37,47 @@
         2)
      1))
 
+(defn sign [n]
+  (cond
+    (< 0 n) 1
+    (> 0 n) -1
+    :else   0))
+
+(defn constrain-force
+  "Constrains force to be an integer multiple of snap. Rounds up for positive numbers; rounds down for negative numbers."
+  [force snap]
+  (* (sign force)
+     (js/Math.ceil (/ (js/Math.abs force) snap))
+     snap))
+
+#_(defn constrain
+  [v snap]
+  (let [x (constrain-)
+        y
+        z]
+    (js/THREE.Vector3. x y z)))
+
+(defn- to-vector
+  [v]
+  [(.-x v)
+   (.-y v)
+   (.-z v)])
+
+(defn- from-vector
+  [v]
+  (let [[x y z] v]
+    (js/THREE.Vector3. x y z)))
+
+(defn constrain-v
+  [v snap]
+  (->> v
+       to-vector
+       (mapv #(* 2 %))
+       (mapv #(constrain-force % snap))
+       from-vector))
+
+(def grid-size 80)
+
 (defn init!
   []
   (let [start (.now js/Date)
@@ -59,7 +100,7 @@
 
         ;; make a cube with flat colours
         cube-material (js/THREE.MeshBasicMaterial. (clj->js {:color 0xffffff :vertexColors js/THREE.FaceColors}))
-        cube-geometry (js/THREE.CubeGeometry. 80 80 80 1 1 1)
+        cube-geometry (js/THREE.CubeGeometry. grid-size grid-size grid-size 1 1 1)
         _             (doseq [i    (range (.-length (.-faces cube-geometry)))
                               :let [face (aget (.-faces cube-geometry) i)]]
                         (.setRGB (.-color face) (js/Math.random) (js/Math.random) (js/Math.random)))
@@ -94,7 +135,6 @@
         _      (show-line! origin (js/THREE.Vector3. 0 100 0) 0x00ff00) ;; y
         _      (show-line! origin (js/THREE.Vector3. 0 0 100) 0x0000ff) ;; z
 
-        ;; allow clicking on parts of cube with mouse to change their colour
         projector (js/THREE.Projector.)
         ray       (js/THREE.Raycaster.)
         _         (.addEventListener js/window
@@ -119,8 +159,29 @@
 
         _ (.addEventListener js/window
                              "mouseup"
-                             (fn [_event]
+                             (fn [event]
                                (when (:dragging-from @*state)
+                                 (let [x        (transform-origin-to-center (.-clientX event)
+                                                                            (.-innerWidth js/window))
+                                       y        (- (transform-origin-to-center (.-clientY event)
+                                                                               (.-innerHeight js/window)))
+                                       screen-v (js/THREE.Vector2. x y)
+                                       _        (.setFromCamera ray screen-v camera)
+
+                                       target-list (clj->js [cube])
+                                       intersects  (.intersectObjects ray target-list)]
+                                   (when (> (.-length intersects) 0)
+                                     (let [p             (.-point (aget intersects 0))
+                                           worldP        (.worldToLocal (.-object (aget intersects 0)) p)
+                                           v             (js/THREE.Vector3. (.-x worldP)
+                                                                            (.-y worldP)
+                                                                            (.-z worldP))
+                                           dragging-from (:dragging-from @*state)
+                                           constrained   (constrain-v v grid-size)
+                                           delta-p       (.sub v dragging-from)
+                                           constrained   (constrain-v delta-p grid-size)
+                                           _             (show-line! dragging-from constrained 0xff0000)
+                                           _             (.add (.-position cube) constrained)])))
                                  (swap! *state #(dissoc % :dragging-from)))))
 
         _ (.addEventListener js/window
@@ -133,42 +194,17 @@
                                                                                (.-innerHeight js/window)))
                                        screen-v (js/THREE.Vector2. x y)
                                        _        (.setFromCamera ray screen-v camera)
-                                       ;; TODO: create a plane parallel to the
-                                       ;; face of the object being dragged,
-                                       ;; then find intersection with where the
-                                       ;; mouse cursor is.
-                                       ;; Draw a line from the drag start position
-                                       ;; to this intersection point.
-                                       ]))))
-        ;; target-list (clj->js [cube])
-        ;; _ (.addEventListener js/window
-        ;;                      "mousedown"
-        ;;                      (fn [event]
-        ;;                        (let [transform-origin-to-center (fn [num denom]
-        ;;                                                           (- (* (/ num denom)
-        ;;                                                                 2)
-        ;;                                                              1))
-        ;;                              x (transform-origin-to-center (.-clientX event)
-        ;;                                                            (.-innerWidth js/window))
-        ;;                              y (- (transform-origin-to-center (.-clientY event)
-        ;;                                                               (.-innerHeight js/window)))
-        ;;                              screen-v      (js/THREE.Vector2. x y)
-        ;;                              ray (js/THREE.Raycaster.)
-        ;;                              _ (.setFromCamera ray screen-v camera)
-        ;;                              intersects (.intersectObjects ray target-list)
-        ;;                              _          (when (> (.-length intersects) 0)
-        ;;                                           (let [p (.-point (aget intersects 0))
-        ;;                                                 worldP (.worldToLocal (.-object (aget intersects 0)) p)
-        ;;                                                 v (js/THREE.Vector3. (.-x worldP)
-        ;;                                                                      (.-y worldP)
-        ;;                                                                      (.-z worldP))
-        ;;                                                 _ (show-line! origin v 0xffff00)
-        ;;                                                 random-colour #(+ (* 0.8 (js/Math.random)) 0.2)]
-        ;;                                             (.setRGB (.-color (.-face (aget intersects 0)))
-        ;;                                                      (random-colour)
-        ;;                                                      (random-colour)
-        ;;                                                      (random-colour))))]))
-        ;;                      false)
+
+                                       target-list (clj->js [cube])
+                                       intersects  (.intersectObjects ray target-list)]
+                                   (when (> (.-length intersects) 0)
+                                     (let [p (.-point (aget intersects 0))
+                                           worldP (.worldToLocal (.-object (aget intersects 0)) p)
+                                           v (js/THREE.Vector3. (.-x worldP)
+                                                                (.-y worldP)
+                                                                (.-z worldP))
+                                           dragging-from (:dragging-from @*state)
+                                           _ (show-line! dragging-from v 0x0ffff)]))))))
 
         _ (defn update!
             [dt-ms])
