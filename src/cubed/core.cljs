@@ -22,13 +22,6 @@
     (> 0 n) -1
     :else   0))
 
-(defn- constrain-force
-  "Constrains force to be an integer multiple of snap. Rounds up for positive numbers; rounds down for negative numbers."
-  [force snap]
-  (* (sign force)
-     (js/Math.ceil (/ (js/Math.abs force) snap))
-     snap))
-
 (defn- Vector3->vec
   [v]
   [(.-x v)
@@ -39,14 +32,6 @@
   [v]
   (let [[x y z] v]
     (js/THREE.Vector3. x y z)))
-
-(defn- constrain-v
-  [v snap]
-  (->> v
-       Vector3->vec
-       (mapv #(* 2 %))
-       (mapv #(constrain-force % snap))
-       vec->Vector3))
 
 (def grid-size 80)
 
@@ -137,9 +122,10 @@
                                          (when (> (.-length intersects) 0)
                                            (let [p      (.-point (aget intersects 0))
                                                  worldP (.worldToLocal (.-object (aget intersects 0)) p)
-                                                 v      (js/THREE.Vector3. (.-x worldP)
-                                                                           (.-y worldP)
-                                                                           (.-z worldP))
+                                                 v      (.add (js/THREE.Vector3. (.-x worldP)
+                                                                                 (.-y worldP)
+                                                                                 (.-z worldP))
+                                                              (.-position (.-object (aget intersects 0))))
                                                  _      (show-point! v ui-vertex-color)
                                                  _      (swap! *state #(assoc % :dragging-from v))])))))
 
@@ -159,16 +145,17 @@
                                    (when (> (.-length intersects) 0)
                                      (let [p             (.-point (aget intersects 0))
                                            worldP        (.worldToLocal (.-object (aget intersects 0)) p)
-                                           v             (js/THREE.Vector3. (.-x worldP)
-                                                                            (.-y worldP)
-                                                                            (.-z worldP))
+                                           v             (.add (js/THREE.Vector3. (.-x worldP)
+                                                                                  (.-y worldP)
+                                                                                  (.-z worldP))
+                                                               (.-position (.-object (aget intersects 0))))
                                            dragging-from (:dragging-from @*state)
-                                           constrained   (constrain-v v grid-size)
                                            delta-p       (.sub v dragging-from)
-                                           constrained   (constrain-v delta-p grid-size)
-                                           _             (show-line! dragging-from constrained ui-line-color)
-                                           _             (show-point! constrained ui-vertex-color)
-                                           _             (.add (.-position cube) constrained)])))
+                                           dest-point    (.add (.clone dragging-from)
+                                                               delta-p)
+                                           _             (show-line! dragging-from dest-point ui-line-color)
+                                           _             (show-point! dest-point ui-vertex-color)
+                                           _             (.add (.-position cube) delta-p)])))
                                  (swap! *state #(dissoc % :dragging-from)))))
 
         _ (.addEventListener js/window
@@ -185,14 +172,15 @@
                                        target-list (clj->js [cube])
                                        intersects  (.intersectObjects ray target-list)]
                                    (when (> (.-length intersects) 0)
-                                     (let [p (.-point (aget intersects 0))
-                                           worldP (.worldToLocal (.-object (aget intersects 0)) p)
-                                           v (js/THREE.Vector3. (.-x worldP)
-                                                                (.-y worldP)
-                                                                (.-z worldP))
+                                     (let [p             (.-point (aget intersects 0))
+                                           worldP        (.worldToLocal (.-object (aget intersects 0)) p)
+                                           v             (.add (js/THREE.Vector3. (.-x worldP)
+                                                                                  (.-y worldP)
+                                                                                  (.-z worldP))
+                                                               (.-position (.-object (aget intersects 0))))
                                            dragging-from (:dragging-from @*state)
-                                           _ (show-line! dragging-from v ui-line-color)
-                                           _ (show-point! v ui-vertex-color)]))))))
+                                           _             (show-line! dragging-from v ui-line-color)
+                                           _             (show-point! v ui-vertex-color)]))))))
 
         _ (defn update!
             [dt-ms])
