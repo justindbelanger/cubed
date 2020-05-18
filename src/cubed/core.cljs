@@ -4,28 +4,7 @@
             [cljsjs.three-examples.renderers.SoftwareRenderer]
             [clojure.core.matrix :as ccm]))
 
-;; TODO make one cube and subtractive geom world
-;; TODO if subtractive geom world is too hard, just make a "platform" out of immovable cubes
-;; TODO move cube with click and drag
-
-;; TODO animation can be as simple as prerendered sprites for the most noticeable parts of rotating cubes
-;; this can be coupled with changing colour palettes for different kinds of cubes
-
-;; want to be able to see the exact point in the world that my mouse pointer is affecting
-;; want to be able to predict what will happen before i click
-;; moving cubes means
-;; 1. clicking on a point on a cube
-;; 2. dragging to create a force vector along the plane parallel to the relevant face
-;; 3. once the vector is large enough/once the force is strong enough, move the cube a fixed distance. OR start out by always moving the cube along with the mouse cursor along that same vector; then add moving in fixed increments.
-
 ;; * state
-
-#_(def state (atom [{:transform "matrix goes here"
-                   :name      "cube 1"
-                   :mesh      "mesh info goes here"}
-                  {:subtractive true
-                   :name        "world boundaries"
-                   :mesh        "mesh info goes here"}]))
 
 (def *state (atom {}))
 
@@ -49,13 +28,6 @@
   (* (sign force)
      (js/Math.ceil (/ (js/Math.abs force) snap))
      snap))
-
-#_(defn constrain
-  [v snap]
-  (let [x (constrain-)
-        y
-        z]
-    (js/THREE.Vector3. x y z)))
 
 (defn- to-vector
   [v]
