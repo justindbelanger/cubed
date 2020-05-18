@@ -16,37 +16,37 @@
         2)
      1))
 
-(defn sign [n]
+(defn- sign [n]
   (cond
     (< 0 n) 1
     (> 0 n) -1
     :else   0))
 
-(defn constrain-force
+(defn- constrain-force
   "Constrains force to be an integer multiple of snap. Rounds up for positive numbers; rounds down for negative numbers."
   [force snap]
   (* (sign force)
      (js/Math.ceil (/ (js/Math.abs force) snap))
      snap))
 
-(defn- to-vector
+(defn- Vector3->vec
   [v]
   [(.-x v)
    (.-y v)
    (.-z v)])
 
-(defn- from-vector
+(defn- vec->Vector3
   [v]
   (let [[x y z] v]
     (js/THREE.Vector3. x y z)))
 
-(defn constrain-v
+(defn- constrain-v
   [v snap]
   (->> v
-       to-vector
+       Vector3->vec
        (mapv #(* 2 %))
        (mapv #(constrain-force % snap))
-       from-vector))
+       vec->Vector3))
 
 (def grid-size 80)
 
