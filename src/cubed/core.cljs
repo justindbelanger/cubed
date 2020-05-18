@@ -50,6 +50,9 @@
 
 (def grid-size 80)
 
+(def ui-vertex-color 0x00ffff)
+(def ui-line-color 0xffff00)
+
 (defn init!
   []
   (let [start (.now js/Date)
@@ -102,6 +105,17 @@
                   line          (js/THREE.Line. line-geometry line-material)
                   _             (.add scene line)]))
 
+        _ (defn show-point!
+            [v color]
+            (let [material (js/THREE.MeshBasicMaterial. (clj->js {:color color}))
+                  geometry (js/THREE.SphereGeometry. 5 3 2)
+                  sphere   (js/THREE.Mesh. geometry material)
+                  _        (.set (.-position sphere)
+                                 (.-x v)
+                                 (.-y v)
+                                 (.-z v))
+                  _ (.add scene sphere)]))
+
         origin (js/THREE.Vector3. 0 0 0)
         _      (show-line! origin (js/THREE.Vector3. 100 0 0) 0xff0000) ;; x
         _      (show-line! origin (js/THREE.Vector3. 0 100 0) 0x00ff00) ;; y
@@ -126,7 +140,7 @@
                                                  v      (js/THREE.Vector3. (.-x worldP)
                                                                            (.-y worldP)
                                                                            (.-z worldP))
-                                                 _      (show-line! origin v 0xffff00)
+                                                 _      (show-point! v ui-vertex-color)
                                                  _      (swap! *state #(assoc % :dragging-from v))])))))
 
         _ (.addEventListener js/window
@@ -152,7 +166,8 @@
                                            constrained   (constrain-v v grid-size)
                                            delta-p       (.sub v dragging-from)
                                            constrained   (constrain-v delta-p grid-size)
-                                           _             (show-line! dragging-from constrained 0xff0000)
+                                           _             (show-line! dragging-from constrained ui-line-color)
+                                           _             (show-point! constrained ui-vertex-color)
                                            _             (.add (.-position cube) constrained)])))
                                  (swap! *state #(dissoc % :dragging-from)))))
 
@@ -176,7 +191,8 @@
                                                                 (.-y worldP)
                                                                 (.-z worldP))
                                            dragging-from (:dragging-from @*state)
-                                           _ (show-line! dragging-from v 0x0ffff)]))))))
+                                           _ (show-line! dragging-from v ui-line-color)
+                                           _ (show-point! v ui-vertex-color)]))))))
 
         _ (defn update!
             [dt-ms])
